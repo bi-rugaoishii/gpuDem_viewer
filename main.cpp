@@ -37,6 +37,7 @@ int main() {
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) return -1;
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_PROGRAM_POINT_SIZE);  //added
 
     CameraController camController(glm::vec3(0.0f, 0.0f, 5.0f));
     camController.setAspectRatio(static_cast<float>(gWindowWidth)/static_cast<float>(gWindowHeight));
@@ -46,8 +47,39 @@ int main() {
     gui.init(window);
 
     Shader shader("vertex_shader.glsl", "fragment_shader.glsl");
+    Shader fastShader("fast_vertex.glsl", "fast_fragment_shader.glsl");
+
     Sphere sphere(1.0f, 100, 100);
     float sphereScale = 0.03f;
+
+
+    //////
+    unsigned int pointVAO, pointVBO;
+    glGenVertexArrays(1, &pointVAO);
+    glGenBuffers(1, &pointVBO);
+
+    glBindVertexArray(pointVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, pointVBO);
+
+    // 最大粒子数ぶん確保（仮に100万想定）
+    glBufferData(GL_ARRAY_BUFFER,
+            sizeof(float)*4*1000000,
+            nullptr,
+            GL_DYNAMIC_DRAW);
+
+    // location 0 = position
+    glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,
+            sizeof(float)*4,(void*)0);
+    glEnableVertexAttribArray(0);
+
+    // location 1 = radius
+    glVertexAttribPointer(1,1,GL_FLOAT,GL_FALSE,
+            sizeof(float)*4,(void*)(sizeof(float)*3));
+    glEnableVertexAttribArray(1);
+
+    glBindVertexArray(0);
+
+    ///
 
     //read coordinates from a file
     PositionLoader loader;
@@ -59,6 +91,7 @@ int main() {
 
     sphereScale = allFrames[0].r[0];
 
+   
     while (!glfwWindowShouldClose(window)) {
         gui.currentFrameTime = static_cast<float>(glfwGetTime());
         camController.updateTime(gui.currentFrameTime);
@@ -70,7 +103,23 @@ int main() {
         gui.beginFrame();
         int maxFrame = static_cast<int>(allFrames.size())-1;
         gui.drawSphereControl(sphereScale, camController.camera.Position,maxFrame);
+        gui.renderModeControl();
+        // ======================================
+        // Reload request handling
+        // ======================================
+        if(gui.requestReload)
+        {
+            gui.requestReload = false;
 
+            allFrames = loader.loadAllFrames("results");
+
+            if(!allFrames.empty())
+            {
+                gui.currentFrame = 0;
+                spherePositions = allFrames[0].pos;
+                sphereScale = allFrames[0].r[0];
+            }
+        }
 
         shader.use();
 
@@ -94,19 +143,54 @@ int main() {
             gui.currentFrame = (gui.currentFrame + 1) % allFrames.size();
             spherePositions = allFrames[gui.currentFrame].pos;
         }
+       if(gui.isFastPointMode)
+        {
+            std::vector<float> gpuData;
+            gpuData.reserve(spherePositions.size()*4);
 
-        for (size_t i=0; i < spherePositions.size(); i++){
-            glm::mat4 model = glm::mat4(1.0f);
-            model = glm::translate(glm::mat4(1.0f),spherePositions[i]);
-            //model = glm::rotate(model, 0.0f, glm::vec3(0.0f, 1.0f, 0.0f));
-            model = glm::scale(model, glm::vec3(sphereScale));
-            shader.setMat4("model", model);
-            sphere.draw();
+            const std::vector<float>& r =
+                allFrames[gui.currentFrame].r;
+
+            for(size_t i=0;i<spherePositions.size();i++)
+            {
+                gpuData.push_back(spherePositions[i].x);
+                gpuData.push_back(spherePositions[i].y);
+                gpuData.push_back(spherePositions[i].z);
+                gpuData.push_back(r[i]); 
+            }
+
+            glBindBuffer(GL_ARRAY_BUFFER, pointVBO);
+            glBufferSubData(GL_ARRAY_BUFFER,0,
+                    gpuData.size()*sizeof(float),
+                    gpuData.data());
+
+            fastShader.use();
+
+            glm::mat4 view = camController.camera.GetViewMatrix();
+            glm::mat4 proj = camController.getProjectionMatrix();
+
+            fastShader.setMat4("view", view);
+            fastShader.setMat4("projection", proj);
+            fastShader.setFloat("viewportHeight",(float)gWindowHeight);
+            fastShader.setFloat("sphereScale",sphereScale);
+
+            glBindVertexArray(pointVAO);
+            glDrawArrays(GL_POINTS,0,spherePositions.size());
+
+        }else{
+            for (size_t i=0; i < spherePositions.size(); i++){
+                glm::mat4 model = glm::mat4(1.0f);
+                model = glm::translate(glm::mat4(1.0f),spherePositions[i]);
+                //model = glm::rotate(model, 0.0f, glm::vec3(0.0f, 1.0f, 0.0f));
+                model = glm::scale(model, glm::vec3(sphereScale));
+                shader.setMat4("model", model);
+                sphere.draw();
+            }
         }
 
-        gui.render();
-        glfwSwapBuffers(window);
-        glfwPollEvents();
+       gui.render();
+       glfwSwapBuffers(window);
+       glfwPollEvents();
     }
 
     gui.shutdown();

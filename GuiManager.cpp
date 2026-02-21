@@ -18,6 +18,20 @@ void GuiManager::beginFrame() {
     ImGui::NewFrame();
 }
 
+void GuiManager::renderModeControl(){
+    ImGui::Begin("Render Mode");
+
+    if(ImGui::Button("Sphere Mode"))
+        isFastPointMode = false;
+
+    ImGui::SameLine();
+
+    if(ImGui::Button("Fast Mode"))
+        isFastPointMode = true;
+
+    ImGui::End();
+}
+
 void GuiManager::drawSphereControl(float& scale, const glm::vec3& cameraPos, const int maxFrame) {
     ImGui::Begin("Animation Control");
 
@@ -115,6 +129,12 @@ void GuiManager::drawSphereControl(float& scale, const glm::vec3& cameraPos, con
     }
 
     ImGui::Text("Frame %d / %d", currentFrame, maxFrame);
+
+    /* === reload button */
+
+    if (ImGui::Button("Reload Frames")){
+        requestReload = true;
+    }
 
     ImGui::End();
 }

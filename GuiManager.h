@@ -8,6 +8,7 @@ class GuiManager {
 public:
     void init(GLFWwindow* window);
     void beginFrame();
+    void renderModeControl();
     void drawSphereControl(float& scale, const glm::vec3& cameraPos,const int maxFrame);
     void render();
     void shutdown();
@@ -24,6 +25,11 @@ public:
     float holdTimerRight = 0.0f;
     float holdInterval = 1.0f / 6.0f; // 6fps
     float holdDelay = 0.25f;
+
+
+    /* reloading files */
+    bool requestReload = false;
+    bool isFastPointMode = true;
 
 };
 
