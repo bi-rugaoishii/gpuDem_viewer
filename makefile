@@ -2,7 +2,7 @@ CXX = g++
 CXXFLAGS =  -Wall -Wextra -O2
 
 # Paths to external dependencies
-INCLUDES = -Iexternal/glad/include -Iexternal/imgui -Iexternal/imgui/backends
+INCLUDES = -Iexternal/glad/include -Iexternal/imgui -Iexternal/imgui/backends  -Iexternal/ImGuiFileDialog
 LIBS = -lglfw -ldl -lGL 
 
 # All source files
@@ -10,15 +10,18 @@ CPP_SRC = main.cpp \
           Shader.cpp \
           Sphere.cpp \
           Camera.cpp \
-          CameraController.cpp \
-          PositionLoader.cpp \
-          GuiManager.cpp \
-          external/imgui/imgui.cpp \
-          external/imgui/imgui_draw.cpp \
-          external/imgui/imgui_tables.cpp \
-          external/imgui/imgui_widgets.cpp \
-          external/imgui/backends/imgui_impl_glfw.cpp \
-          external/imgui/backends/imgui_impl_opengl3.cpp
+		  CameraController.cpp \
+		  PositionLoader.cpp \
+		  GuiManager.cpp \
+		  StlMeshLoader.cpp\
+		  Mesh.cpp\
+		  external/ImGuiFileDialog/ImGuiFileDialog.cpp \
+		  external/imgui/imgui.cpp \
+		  external/imgui/imgui_draw.cpp \
+		  external/imgui/imgui_tables.cpp \
+		  external/imgui/imgui_widgets.cpp \
+		  external/imgui/backends/imgui_impl_glfw.cpp \
+		  external/imgui/backends/imgui_impl_opengl3.cpp
 
 C_SRC = external/glad/glad.c
 
@@ -26,7 +29,7 @@ SRC = $(CPP_SRC) $(C_SRC)
 
 # Object files (place in obj/ directory)
 OBJ = $(SRC:%.cpp=obj/%.o)
-OBJ := $(OBJ:%.c=obj/%.o)
+	OBJ := $(OBJ:%.c=obj/%.o)
 
 # Output executable
 TARGET = bin/viewer

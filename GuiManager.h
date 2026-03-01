@@ -3,6 +3,8 @@
 #include "imgui.h"
 #include <glm/glm.hpp>
 #include <GLFW/glfw3.h>
+#include <vector>
+#include <string>
 
 class GuiManager {
 public:
@@ -26,6 +28,10 @@ public:
     float holdInterval = 1.0f / 6.0f; // 6fps
     float holdDelay = 0.25f;
 
+    bool openStlDialog = false;
+    int requestStlDelete = -1;
+
+    void drawStlControl(const std::vector<std::string>& names);
 
     /* reloading files */
     bool requestReload = false;

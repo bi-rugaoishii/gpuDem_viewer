@@ -18,6 +18,26 @@ void GuiManager::beginFrame() {
     ImGui::NewFrame();
 }
 
+void GuiManager::drawStlControl(const std::vector<std::string>& names)
+{
+    ImGui::Begin("STL Control");
+
+    if(ImGui::Button("Load STL"))
+    {
+        openStlDialog = true;
+    }
+
+    ImGui::Separator();
+    ImGui::Text("Loaded STL:");
+
+    for(size_t i=0;i<names.size();i++)
+    {
+        ImGui::Text("%s", names[i].c_str());
+    }
+
+    ImGui::End();
+}
+
 void GuiManager::renderModeControl(){
     ImGui::Begin("Render Mode");
 

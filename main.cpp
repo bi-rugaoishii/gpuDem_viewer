@@ -6,10 +6,15 @@
 #include "CameraController.h"
 #include "GuiManager.h"
 #include "PositionLoader.h"
+#include "StlMeshLoader.h"
+#include "ImGuiFileDialog.h"
+#include "Mesh.h"
+//#include "FileDialog.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <vector>
 #include <string>
+
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
@@ -52,6 +57,9 @@ int main() {
     Sphere sphere(1.0f, 100, 100);
     float sphereScale = 0.03f;
 
+    // ===== STL関連 =====
+    std::vector<Mesh> stlMeshes;
+    std::vector<std::string> stlNames;
 
     //////
     unsigned int pointVAO, pointVBO;
@@ -84,14 +92,18 @@ int main() {
     //read coordinates from a file
     PositionLoader loader;
     std::vector<FrameData> allFrames = loader.loadAllFrames("results");
+    std::vector<FrameData> allFrames2 = loader.loadAllFrames("results2");
+    bool hasSecondDataset = !allFrames2.empty();
+
     float timeAccumulator = 0.0f;
     float frameDuration = 0.05f; // 各フレームの持続時間（秒）
 
     std::vector<glm::vec3> spherePositions = allFrames.empty() ? std::vector<glm::vec3>() : allFrames[0].pos;
+    std::vector<glm::vec3> spherePositions2 = allFrames2.empty() ? std::vector<glm::vec3>() : allFrames[0].pos;
 
     sphereScale = allFrames[0].r[0];
 
-   
+
     while (!glfwWindowShouldClose(window)) {
         gui.currentFrameTime = static_cast<float>(glfwGetTime());
         camController.updateTime(gui.currentFrameTime);
@@ -101,9 +113,86 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         gui.beginFrame();
-        int maxFrame = static_cast<int>(allFrames.size())-1;
+        int maxFrame = 0;
+        if(hasSecondDataset){
+
+            maxFrame = std::min(static_cast<int>(allFrames.size()),static_cast<int>(allFrames2.size()))-1;
+        }else{
+            maxFrame = static_cast<int>(allFrames.size())-1;
+        }
+
+        /* ============= GUI buttons ============== */
         gui.drawSphereControl(sphereScale, camController.camera.Position,maxFrame);
         gui.renderModeControl();
+        gui.drawStlControl(stlNames);
+
+
+        /* ========= stl loading ============= */
+        // =======================================
+        // STL File Dialog
+        // =======================================
+
+        if(gui.openStlDialog)
+        {
+            IGFD::FileDialogConfig config;
+            config.path = ".";
+            ImGuiFileDialog::Instance()->OpenDialog(
+                    "ChooseSTL",
+                    "Choose STL File",
+                    ".stl",
+                    config);
+            gui.openStlDialog = false;
+        }
+
+        if(ImGuiFileDialog::Instance()->Display("ChooseSTL"))
+        {
+            if(ImGuiFileDialog::Instance()->IsOk())
+            {
+                std::string filePath =
+                    ImGuiFileDialog::Instance()->GetFilePathName();
+
+                // ===== STLロード処理 =====
+                StlMeshLoader loader;
+
+                if(loader.loadASCII(filePath))
+                {
+                    std::vector<glm::vec3> vertices;
+                    std::vector<glm::vec3> normals;
+
+                    const auto& tris = loader.getTriangles();
+
+                    for(size_t i=0;i<tris.size();i++)
+                    {
+                        vertices.push_back(tris[i].v0);
+                        vertices.push_back(tris[i].v1);
+                        vertices.push_back(tris[i].v2);
+
+                        normals.push_back(tris[i].normal);
+                        normals.push_back(tris[i].normal);
+                        normals.push_back(tris[i].normal);
+                    }
+
+                    Mesh mesh;
+                    mesh.build(vertices,normals);
+
+                    stlMeshes.push_back(mesh);
+                    stlNames.push_back(filePath);
+                }
+            }
+
+            ImGuiFileDialog::Instance()->Close();
+        }if(gui.requestStlDelete >= 0)
+        {
+            int idx = gui.requestStlDelete;
+            gui.requestStlDelete = -1;
+
+            if(idx < stlMeshes.size())
+            {
+                stlMeshes.erase(stlMeshes.begin()+idx);
+                stlNames.erase(stlNames.begin()+idx);
+            }
+        }
+
         // ======================================
         // Reload request handling
         // ======================================
@@ -118,6 +207,14 @@ int main() {
                 gui.currentFrame = 0;
                 spherePositions = allFrames[0].pos;
                 sphereScale = allFrames[0].r[0];
+            }
+
+            allFrames2 = loader.loadAllFrames("results2");
+
+            if(!allFrames2.empty()){
+                hasSecondDataset = true;
+            }else{
+                hasSecondDataset = false;
             }
         }
 
@@ -138,32 +235,17 @@ int main() {
 
         //show in currentFrame
         spherePositions = allFrames[gui.currentFrame].pos;
+        if(hasSecondDataset){
+            spherePositions2 = allFrames2[gui.currentFrame].pos;
+        }
+
         if (timeAccumulator >= frameDuration && !allFrames.empty() && gui.isPlayAnimation) {
             timeAccumulator = 0.0f;
             gui.currentFrame = (gui.currentFrame + 1) % allFrames.size();
             spherePositions = allFrames[gui.currentFrame].pos;
         }
-       if(gui.isFastPointMode)
+        if(gui.isFastPointMode)
         {
-            std::vector<float> gpuData;
-            gpuData.reserve(spherePositions.size()*4);
-
-            const std::vector<float>& r =
-                allFrames[gui.currentFrame].r;
-
-            for(size_t i=0;i<spherePositions.size();i++)
-            {
-                gpuData.push_back(spherePositions[i].x);
-                gpuData.push_back(spherePositions[i].y);
-                gpuData.push_back(spherePositions[i].z);
-                gpuData.push_back(r[i]); 
-            }
-
-            glBindBuffer(GL_ARRAY_BUFFER, pointVBO);
-            glBufferSubData(GL_ARRAY_BUFFER,0,
-                    gpuData.size()*sizeof(float),
-                    gpuData.data());
-
             fastShader.use();
 
             glm::mat4 view = camController.camera.GetViewMatrix();
@@ -175,7 +257,58 @@ int main() {
             fastShader.setFloat("sphereScale",sphereScale);
 
             glBindVertexArray(pointVAO);
-            glDrawArrays(GL_POINTS,0,spherePositions.size());
+            glBindBuffer(GL_ARRAY_BUFFER, pointVBO);
+
+            /* dataset 1*/
+            {
+                std::vector<float> gpuData;
+                gpuData.reserve(spherePositions.size()*4);
+
+                const std::vector<float>& r =
+                    allFrames[gui.currentFrame].r;
+
+                for(size_t i=0;i<spherePositions.size();i++)
+                {
+                    gpuData.push_back(spherePositions[i].x);
+                    gpuData.push_back(spherePositions[i].y);
+                    gpuData.push_back(spherePositions[i].z);
+                    gpuData.push_back(r[i]); 
+                }
+
+                glBufferSubData(GL_ARRAY_BUFFER,0,
+                        gpuData.size()*sizeof(float),
+                        gpuData.data());
+
+
+
+                fastShader.setVec3("objectColor", glm::vec3(1,1,1));
+                glDrawArrays(GL_POINTS,0,spherePositions.size());
+            }
+
+            if(hasSecondDataset){
+                std::vector<float> gpuData;
+                gpuData.reserve(spherePositions2.size()*4);
+
+                const std::vector<float>& r =
+                    allFrames2[gui.currentFrame].r;
+
+                for(size_t i=0;i<spherePositions2.size();i++)
+                {
+                    gpuData.push_back(spherePositions2[i].x);
+                    gpuData.push_back(spherePositions2[i].y);
+                    gpuData.push_back(spherePositions2[i].z);
+                    gpuData.push_back(r[i]); 
+                }
+
+                glBufferSubData(GL_ARRAY_BUFFER,0,
+                        gpuData.size()*sizeof(float),
+                        gpuData.data());
+
+
+
+                fastShader.setVec3("objectColor", glm::vec3(0.3,0.6,1.0));
+                glDrawArrays(GL_POINTS,0,spherePositions2.size());
+            }
 
         }else{
             for (size_t i=0; i < spherePositions.size(); i++){
@@ -188,9 +321,20 @@ int main() {
             }
         }
 
-       gui.render();
-       glfwSwapBuffers(window);
-       glfwPollEvents();
+
+        for(size_t i=0;i<stlMeshes.size();i++)
+        {
+            glm::mat4 model(1.0f);
+
+            shader.setMat4("model",model);
+            shader.setVec3("objectColor",glm::vec3(0.7f,0.7f,0.7f));
+
+            stlMeshes[i].draw();
+        }
+
+        gui.render();
+        glfwSwapBuffers(window);
+        glfwPollEvents();
     }
 
     gui.shutdown();
