@@ -3,6 +3,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include "CameraController.h"
 #include <glm/gtx/rotate_vector.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 CameraController::CameraController(glm::vec3 startPos)
     : camera(startPos), lastX(400.0f), lastY(300.0f), firstMouse(true), rotatingCamera(false), deltaTime(0.0f), lastFrame(0.0f) {}
@@ -27,35 +28,45 @@ void CameraController::processKeyboard(GLFWwindow* window) {
     }
 }
 
-void CameraController::mouseCallback(float xpos, float ypos) {
+void CameraController::mouseCallback(float xpos, float ypos)
+{
     if (!rotatingCamera) return;
-    if (firstMouse) {
+
+    if (firstMouse)
+    {
         lastX = xpos;
         lastY = ypos;
         firstMouse = false;
     }
-    float xoffset = xpos - lastX;
-    float yoffset = lastY - ypos;
+
+    float dx = xpos - lastX;
+    float dy = ypos - lastY;
+
     lastX = xpos;
     lastY = ypos;
 
-    float angleSpeed = 0.005f;
-    float horizontalAngle = xoffset*angleSpeed;
-    float verticalAngle = yoffset*angleSpeed;
+    float speed = 0.005f;
 
-    float focusDistance = 5.0f;
-    target = camera.Position + camera.Front * focusDistance;
+    float yawAngle   = -dx * speed;
+    float pitchAngle = -dy * speed;
 
-    glm::vec3 direction = camera.Position - target;
-    direction = glm::rotate(direction, -horizontalAngle, glm::vec3(0.0f, 1.0f, 0.0f));
-    glm::vec3 right = glm::normalize(glm::cross(direction, glm::vec3(0.0f, 1.0f, 0.0f)));
-    direction = glm::rotate(direction, -verticalAngle, right);
+    glm::vec3 pivot = target;
 
-    camera.Position = target + direction;
-    camera.Front = glm::normalize(target - camera.Position);
-    camera.Right = glm::normalize(glm::cross(camera.Front, camera.WorldUp));
-    camera.Up = glm::normalize(glm::cross(camera.Right, camera.Front));
+    glm::vec3 dir = camera.Position - pivot;
 
+    glm::quat qYaw   = glm::angleAxis(yawAngle, camera.Up);
+    glm::quat qPitch = glm::angleAxis(pitchAngle, camera.Right);
+
+    glm::quat q = qPitch*qYaw;
+
+    dir = q * dir;
+
+    camera.Position = pivot + dir;
+
+    camera.Front = glm::normalize(pivot - camera.Position);
+
+    camera.Right = glm::normalize(glm::cross(camera.Front, camera.Up));
+    camera.Up    = glm::normalize(glm::cross(camera.Right, camera.Front));
 }
 
 void CameraController::mouseButtonCallback(int button, int action) {
@@ -68,6 +79,7 @@ void CameraController::mouseButtonCallback(int button, int action) {
         }
     }
 }
+
 
 void CameraController::setAspectRatio(float aspect){
     this->aspectRatio = aspect;
