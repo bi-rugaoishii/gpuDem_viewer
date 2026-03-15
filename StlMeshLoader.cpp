@@ -11,33 +11,32 @@ bool StlMeshLoader::loadASCII(const std::string& filename)
 
     std::string line;
     StlTriangle tri;
+    int vCount=0;
 
-    while(std::getline(file,line))
-    {
+    while(std::getline(file,line)){
         std::stringstream ss(line);
         std::string word;
         ss >> word;
 
-        if(word == "facet")
-        {
+        if(word == "facet"){
             std::string normalStr;
             ss >> normalStr;
             ss >> tri.normal.x >> tri.normal.y >> tri.normal.z;
-        }
-        else if(word == "vertex")
-        {
+        }else if(word == "vertex"){
             glm::vec3 v;
             ss >> v.x >> v.y >> v.z;
 
-            if(tri.v0 == glm::vec3(0))
+            if(vCount == 0){
                 tri.v0 = v;
-            else if(tri.v1 == glm::vec3(0))
+                vCount += 1;
+            }else if(vCount == 1){
                 tri.v1 = v;
-            else
-            {
+                vCount += 1;
+            }else{
                 tri.v2 = v;
                 triangles.push_back(tri);
                 tri = StlTriangle();
+                vCount = 0;
             }
         }
     }

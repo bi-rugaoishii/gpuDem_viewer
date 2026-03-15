@@ -43,6 +43,8 @@ int main() {
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) return -1;
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_PROGRAM_POINT_SIZE);  //added
+    glEnable(GL_BLEND);  //added
+    glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
 
     CameraController camController(glm::vec3(0.0f, 0.0f, 5.0f));
     camController.setAspectRatio(static_cast<float>(gWindowWidth)/static_cast<float>(gWindowHeight));
@@ -99,7 +101,7 @@ int main() {
     float frameDuration = 0.05f; // 各フレームの持続時間（秒）
 
     std::vector<glm::vec3> spherePositions = allFrames.empty() ? std::vector<glm::vec3>() : allFrames[0].pos;
-    std::vector<glm::vec3> spherePositions2 = allFrames2.empty() ? std::vector<glm::vec3>() : allFrames[0].pos;
+    std::vector<glm::vec3> spherePositions2 = allFrames2.empty() ? std::vector<glm::vec3>() : allFrames2[0].pos;
 
     sphereScale = allFrames[0].r[0];
 
@@ -322,11 +324,14 @@ int main() {
         }
 
 
+        shader.use();
+        float opacity = 0.4f;
         for(size_t i=0;i<stlMeshes.size();i++)
         {
             glm::mat4 model(1.0f);
 
             shader.setMat4("model",model);
+            shader.setFloat("opacity",opacity);
             shader.setVec3("objectColor",glm::vec3(0.7f,0.7f,0.7f));
 
             stlMeshes[i].draw();

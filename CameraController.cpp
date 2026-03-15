@@ -50,7 +50,10 @@ void CameraController::mouseCallback(float xpos, float ypos)
     float yawAngle   = -dx * speed;
     float pitchAngle = -dy * speed;
 
-    glm::vec3 pivot = target;
+    //glm::vec3 pivot = target;
+    float distance = glm::length(target - camera.Position);
+    glm::vec3 pivot = camera.Position + camera.Front * distance;
+    target = pivot;
 
     glm::vec3 dir = camera.Position - pivot;
 
