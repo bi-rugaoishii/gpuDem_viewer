@@ -57,7 +57,9 @@ int main() {
     Shader fastShader("fast_vertex.glsl", "fast_fragment_shader.glsl");
 
     Sphere sphere(1.0f, 100, 100);
-    float sphereScale = 0.03f;
+
+    //* ==== result folder names === */
+    std::vector<std::string> resultNames;
 
     // ===== STL関連 =====
     std::vector<Mesh> stlMeshes;
@@ -93,19 +95,21 @@ int main() {
 
     //read coordinates from a file
     PositionLoader loader;
-    std::vector<FrameData> allFrames = loader.loadAllFrames("results");
-    std::vector<FrameData> allFrames2 = loader.loadAllFrames("results2");
-    bool hasSecondDataset = !allFrames2.empty();
+
+    
+    std::vector<std::vector<FrameData>> allFrames;
+    resultNames.push_back("results"); // default name
+    allFrames.push_back(loader.loadAllFrames("results"));
 
     float timeAccumulator = 0.0f;
     float frameDuration = 0.05f; // 各フレームの持続時間（秒）
 
-    std::vector<glm::vec3> spherePositions = allFrames.empty() ? std::vector<glm::vec3>() : allFrames[0].pos;
-    std::vector<glm::vec3> spherePositions2 = allFrames2.empty() ? std::vector<glm::vec3>() : allFrames2[0].pos;
-
-    sphereScale = allFrames[0].r[0];
+    std::vector<glm::vec3> spherePositions;
+    std::vector<float> radius;
 
 
+
+    /* ======= main render loop =========== */
     while (!glfwWindowShouldClose(window)) {
         gui.currentFrameTime = static_cast<float>(glfwGetTime());
         camController.updateTime(gui.currentFrameTime);
@@ -115,18 +119,72 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         gui.beginFrame();
-        int maxFrame = 0;
-        if(hasSecondDataset){
 
-            maxFrame = std::min(static_cast<int>(allFrames.size()),static_cast<int>(allFrames2.size()))-1;
-        }else{
-            maxFrame = static_cast<int>(allFrames.size())-1;
+        /* == reset spherePositions and radius == */
+        spherePositions.clear() ;
+        radius.clear() ;
+
+        int maxFrame = std::numeric_limits<size_t>::max();
+        for(size_t i=0; i<allFrames.size(); i++){
+            if(allFrames[i].size()<maxFrame){
+                maxFrame=allFrames[i].size();
+            }
         }
 
+        maxFrame = maxFrame-1;
+
         /* ============= GUI buttons ============== */
-        gui.drawSphereControl(sphereScale, camController.camera.Position,maxFrame);
-        gui.renderModeControl();
+        gui.drawSphereControl(camController.camera.Position,maxFrame);
         gui.drawStlControl(stlNames);
+        gui.drawResultControl(resultNames);
+
+
+        /* ========= result loading ============= */
+        // =======================================
+        // Result Folder Dialog
+        // =======================================
+
+        if(gui.openResultDialog){
+
+            IGFD::FileDialogConfig config;
+            config.path = ".";
+            ImGuiFileDialog::Instance()->OpenDialog(
+                    "ChooseResult",
+                    "Choose Result Folder",
+                    nullptr,
+                    config);
+            gui.openResultDialog = false;
+        }
+
+        if(ImGuiFileDialog::Instance()->Display("ChooseResult")){
+
+            if(ImGuiFileDialog::Instance()->IsOk())
+            {
+                std::string folderPath =
+                    ImGuiFileDialog::Instance()->GetCurrentPath();
+                allFrames.push_back(loader.loadAllFrames(folderPath));
+                resultNames.push_back(folderPath);
+
+                /* == refresh max frame to the smallest of loaded results == */
+                printf("checking minimum of maximum frames\n");
+                maxFrame = std::numeric_limits<size_t>::max();
+                for(size_t i=0; i<allFrames.size(); i++){
+                    if(allFrames[i].size()<maxFrame){
+                        maxFrame=allFrames[i].size();
+                    }
+                }
+                maxFrame = maxFrame-1;
+
+                printf("checking done\n");
+
+                gui.drawSphereControl(camController.camera.Position,maxFrame);
+                if(maxFrame<gui.currentFrame){
+                    gui.currentFrame=maxFrame;
+                }
+            }
+
+            ImGuiFileDialog::Instance()->Close();
+        }
 
 
         /* ========= stl loading ============= */
@@ -183,8 +241,9 @@ int main() {
             }
 
             ImGuiFileDialog::Instance()->Close();
-        }if(gui.requestStlDelete >= 0)
-        {
+        }
+
+        if(gui.requestStlDelete >= 0){
             int idx = gui.requestStlDelete;
             gui.requestStlDelete = -1;
 
@@ -202,27 +261,38 @@ int main() {
         {
             gui.requestReload = false;
 
-            allFrames = loader.loadAllFrames("results");
+            allFrames.clear();
+            for (size_t i=0; i<resultNames.size(); i++){
+                allFrames.push_back(loader.loadAllFrames(resultNames[i]));
+            }
 
             if(!allFrames.empty())
             {
-                gui.currentFrame = 0;
-                spherePositions = allFrames[0].pos;
-                sphereScale = allFrames[0].r[0];
+                /* == refresh max frame to the smallest of loaded results == */
+                maxFrame = 1e20;
+                for(size_t i=0; i<allFrames.size(); i++){
+                    if(allFrames[i].size()<maxFrame){
+                        maxFrame=allFrames[i].size();
+                    }
+                }
+
+                if(maxFrame<gui.currentFrame){
+                    gui.currentFrame=maxFrame;
+
+                }
+                maxFrame = maxFrame - 1;
+
+                spherePositions.clear() ;
+                radius.clear() ;
             }
 
-            allFrames2 = loader.loadAllFrames("results2");
-
-            if(!allFrames2.empty()){
-                hasSecondDataset = true;
-            }else{
-                hasSecondDataset = false;
-            }
         }
 
         shader.use();
 
         camController.setAspectRatio(static_cast<float>(gWindowWidth)/static_cast<float>(gWindowHeight)); //for window size change
+
+
         glm::mat4 view = camController.camera.GetViewMatrix();
         glm::mat4 proj = camController.getProjectionMatrix(); //set perspective
         shader.setMat4("view", view);
@@ -236,94 +306,67 @@ int main() {
         timeAccumulator += gui.deltaTime;
 
         //show in currentFrame
-        spherePositions = allFrames[gui.currentFrame].pos;
-        if(hasSecondDataset){
-            spherePositions2 = allFrames2[gui.currentFrame].pos;
+
+        for (size_t i=0; i<allFrames.size(); i++){
+            std::vector<glm::vec3> const &tmp_pos =allFrames[i][gui.currentFrame].pos; 
+            spherePositions.reserve(spherePositions.size()+tmp_pos.size());
+            spherePositions.insert(spherePositions.end(),tmp_pos.begin(),tmp_pos.end());
+            std::vector<float> const &tmp_radius = allFrames[i][gui.currentFrame].r;
+
+            radius.reserve(radius.size()+tmp_radius.size());
+            radius.insert(radius.end(),tmp_radius.begin(),tmp_radius.end());
         }
 
         if (timeAccumulator >= frameDuration && !allFrames.empty() && gui.isPlayAnimation) {
             timeAccumulator = 0.0f;
-            gui.currentFrame = (gui.currentFrame + 1) % allFrames.size();
-            spherePositions = allFrames[gui.currentFrame].pos;
+            gui.currentFrame = (gui.currentFrame + 1) % maxFrame;
+            spherePositions.clear();
+            radius.clear();
+            for (size_t i=0; i<allFrames.size(); i++){
+                std::vector<glm::vec3> const &tmp_pos =allFrames[i][gui.currentFrame].pos; 
+                spherePositions.reserve(spherePositions.size()+tmp_pos.size());
+                spherePositions.insert(spherePositions.end(),tmp_pos.begin(),tmp_pos.end());
+                std::vector<float> const &tmp_radius = allFrames[i][gui.currentFrame].r;
+
+                radius.reserve(radius.size()+tmp_radius.size());
+                radius.insert(radius.end(),tmp_radius.begin(),tmp_radius.end());
+            }
         }
-        if(gui.isFastPointMode)
+
+        /* === render spheres === */
+
+        fastShader.use();
+
+
+        fastShader.setMat4("view", view);
+        fastShader.setMat4("projection", proj);
+        fastShader.setFloat("viewportHeight",(float)gWindowHeight);
+
+        glBindVertexArray(pointVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, pointVBO);
+
+        std::vector<float> gpuData;
+        gpuData.reserve(spherePositions.size()*4);
+
+
+        for(size_t i=0;i<spherePositions.size();i++)
         {
-            fastShader.use();
-
-            glm::mat4 view = camController.camera.GetViewMatrix();
-            glm::mat4 proj = camController.getProjectionMatrix();
-
-            fastShader.setMat4("view", view);
-            fastShader.setMat4("projection", proj);
-            fastShader.setFloat("viewportHeight",(float)gWindowHeight);
-            fastShader.setFloat("sphereScale",sphereScale);
-
-            glBindVertexArray(pointVAO);
-            glBindBuffer(GL_ARRAY_BUFFER, pointVBO);
-
-            /* dataset 1*/
-            {
-                std::vector<float> gpuData;
-                gpuData.reserve(spherePositions.size()*4);
-
-                const std::vector<float>& r =
-                    allFrames[gui.currentFrame].r;
-
-                for(size_t i=0;i<spherePositions.size();i++)
-                {
-                    gpuData.push_back(spherePositions[i].x);
-                    gpuData.push_back(spherePositions[i].y);
-                    gpuData.push_back(spherePositions[i].z);
-                    gpuData.push_back(r[i]); 
-                }
-
-                glBufferSubData(GL_ARRAY_BUFFER,0,
-                        gpuData.size()*sizeof(float),
-                        gpuData.data());
-
-
-
-                fastShader.setVec3("objectColor", glm::vec3(1,1,1));
-                glDrawArrays(GL_POINTS,0,spherePositions.size());
-            }
-
-            if(hasSecondDataset){
-                std::vector<float> gpuData;
-                gpuData.reserve(spherePositions2.size()*4);
-
-                const std::vector<float>& r =
-                    allFrames2[gui.currentFrame].r;
-
-                for(size_t i=0;i<spherePositions2.size();i++)
-                {
-                    gpuData.push_back(spherePositions2[i].x);
-                    gpuData.push_back(spherePositions2[i].y);
-                    gpuData.push_back(spherePositions2[i].z);
-                    gpuData.push_back(r[i]); 
-                }
-
-                glBufferSubData(GL_ARRAY_BUFFER,0,
-                        gpuData.size()*sizeof(float),
-                        gpuData.data());
-
-
-
-                fastShader.setVec3("objectColor", glm::vec3(0.3,0.6,1.0));
-                glDrawArrays(GL_POINTS,0,spherePositions2.size());
-            }
-
-        }else{
-            for (size_t i=0; i < spherePositions.size(); i++){
-                glm::mat4 model = glm::mat4(1.0f);
-                model = glm::translate(glm::mat4(1.0f),spherePositions[i]);
-                //model = glm::rotate(model, 0.0f, glm::vec3(0.0f, 1.0f, 0.0f));
-                model = glm::scale(model, glm::vec3(sphereScale));
-                shader.setMat4("model", model);
-                sphere.draw();
-            }
+            gpuData.push_back(spherePositions[i].x);
+            gpuData.push_back(spherePositions[i].y);
+            gpuData.push_back(spherePositions[i].z);
+            gpuData.push_back(radius[i]); 
         }
 
+        glBufferSubData(GL_ARRAY_BUFFER,0,
+                gpuData.size()*sizeof(float),
+                gpuData.data());
 
+
+
+        fastShader.setVec3("objectColor", glm::vec3(1,1,1));
+        glDrawArrays(GL_POINTS,0,spherePositions.size());
+
+        /* === display stl === */
         shader.use();
         float opacity = 0.4f;
         for(size_t i=0;i<stlMeshes.size();i++)

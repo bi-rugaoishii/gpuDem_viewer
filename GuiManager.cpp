@@ -38,6 +38,27 @@ void GuiManager::drawStlControl(const std::vector<std::string>& names)
     ImGui::End();
 }
 
+void GuiManager::drawResultControl(const std::vector<std::string>& names)
+{
+    ImGui::Begin("Draw Result");
+
+    if(ImGui::Button("Load Result"))
+    {
+        openResultDialog = true;
+    }
+
+    ImGui::Separator();
+    ImGui::Text("Loaded Result:");
+
+    for(size_t i=0;i<names.size();i++)
+    {
+        ImGui::Text("%s", names[i].c_str());
+    }
+
+    ImGui::End();
+}
+
+
 void GuiManager::renderModeControl(){
     ImGui::Begin("Render Mode");
 
@@ -52,7 +73,7 @@ void GuiManager::renderModeControl(){
     ImGui::End();
 }
 
-void GuiManager::drawSphereControl(float& scale, const glm::vec3& cameraPos, const int maxFrame) {
+void GuiManager::drawSphereControl(const glm::vec3& cameraPos, const int maxFrame) {
     ImGui::Begin("Animation Control");
 
     //ImGui::Checkbox("Play", &isPlayAnimation);

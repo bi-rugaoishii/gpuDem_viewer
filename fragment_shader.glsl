@@ -16,7 +16,7 @@ void main() {
     vec3 viewDir = normalize(viewPos -FragPos);
 
     //Ambient 
-    float ambientStrength = 0.2;
+    float ambientStrength = 0.5;
     vec3 ambient = ambientStrength * lightColor ;
 
     //Diffuse

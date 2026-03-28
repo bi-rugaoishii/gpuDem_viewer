@@ -15,6 +15,7 @@ public:
     void mouseButtonCallback(int button, int action);
     glm::vec3 target;
     glm::mat4 getProjectionMatrix() const;
+    glm::vec3 safeNormalize(const glm::vec3& v);
 
     float lastX;
     float lastY;

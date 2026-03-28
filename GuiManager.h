@@ -11,7 +11,7 @@ public:
     void init(GLFWwindow* window);
     void beginFrame();
     void renderModeControl();
-    void drawSphereControl(float& scale, const glm::vec3& cameraPos,const int maxFrame);
+    void drawSphereControl(const glm::vec3& cameraPos,const int maxFrame);
     void render();
     void shutdown();
 
@@ -29,9 +29,11 @@ public:
     float holdDelay = 0.25f;
 
     bool openStlDialog = false;
+    bool openResultDialog = false;
     int requestStlDelete = -1;
 
     void drawStlControl(const std::vector<std::string>& names);
+    void drawResultControl(const std::vector<std::string>& names);
 
     /* reloading files */
     bool requestReload = false;

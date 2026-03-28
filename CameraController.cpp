@@ -28,6 +28,13 @@ void CameraController::processKeyboard(GLFWwindow* window) {
     }
 }
 
+glm::vec3 CameraController::safeNormalize(const glm::vec3& v){
+    float len = glm::length(v);
+    if(len < 1e-6f) return glm::vec3(0.0f, 1.0f, 0.0f); //stop zero div
+
+    return v/len;
+}
+
 void CameraController::mouseCallback(float xpos, float ypos)
 {
     if (!rotatingCamera) return;
@@ -66,10 +73,10 @@ void CameraController::mouseCallback(float xpos, float ypos)
 
     camera.Position = pivot + dir;
 
-    camera.Front = glm::normalize(pivot - camera.Position);
+    camera.Front = safeNormalize(pivot - camera.Position);
 
-    camera.Right = glm::normalize(glm::cross(camera.Front, camera.Up));
-    camera.Up    = glm::normalize(glm::cross(camera.Right, camera.Front));
+    camera.Right = safeNormalize(glm::cross(camera.Front, camera.Up));
+    camera.Up    = safeNormalize(glm::cross(camera.Right, camera.Front));
 }
 
 void CameraController::mouseButtonCallback(int button, int action) {
