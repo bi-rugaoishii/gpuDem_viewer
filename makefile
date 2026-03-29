@@ -14,6 +14,7 @@ CPP_SRC = main.cpp \
 		  PositionLoader.cpp \
 		  GuiManager.cpp \
 		  StlMeshLoader.cpp\
+		  Color.cpp\
 		  Mesh.cpp\
 		  external/ImGuiFileDialog/ImGuiFileDialog.cpp \
 		  external/imgui/imgui.cpp \

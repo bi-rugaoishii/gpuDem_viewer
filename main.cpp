@@ -7,6 +7,7 @@
 #include "GuiManager.h"
 #include "PositionLoader.h"
 #include "StlMeshLoader.h"
+#include "Color.h"
 #include "ImGuiFileDialog.h"
 #include "Mesh.h"
 //#include "FileDialog.h"
@@ -104,8 +105,8 @@ int main() {
     float timeAccumulator = 0.0f;
     float frameDuration = 0.05f; // 各フレームの持続時間（秒）
 
-    std::vector<glm::vec3> spherePositions;
-    std::vector<float> radius;
+    std::vector<std::vector<glm::vec3>> spherePositions;
+    std::vector<std::vector<float>> radius;
 
 
 
@@ -269,7 +270,7 @@ int main() {
             if(!allFrames.empty())
             {
                 /* == refresh max frame to the smallest of loaded results == */
-                maxFrame = 1e20;
+                maxFrame = 1e16;
                 for(size_t i=0; i<allFrames.size(); i++){
                     if(allFrames[i].size()<maxFrame){
                         maxFrame=allFrames[i].size();
@@ -307,29 +308,28 @@ int main() {
 
         //show in currentFrame
 
+        spherePositions.reserve(allFrames.size());
+        radius.reserve(allFrames.size());
         for (size_t i=0; i<allFrames.size(); i++){
-            std::vector<glm::vec3> const &tmp_pos =allFrames[i][gui.currentFrame].pos; 
-            spherePositions.reserve(spherePositions.size()+tmp_pos.size());
-            spherePositions.insert(spherePositions.end(),tmp_pos.begin(),tmp_pos.end());
-            std::vector<float> const &tmp_radius = allFrames[i][gui.currentFrame].r;
 
-            radius.reserve(radius.size()+tmp_radius.size());
-            radius.insert(radius.end(),tmp_radius.begin(),tmp_radius.end());
+            std::vector<glm::vec3> const &tmp_pos =allFrames[i][gui.currentFrame].pos; 
+            spherePositions.push_back(tmp_pos);
+
+            std::vector<float> const &tmp_radius = allFrames[i][gui.currentFrame].r;
+            radius.push_back(tmp_radius);
         }
 
         if (timeAccumulator >= frameDuration && !allFrames.empty() && gui.isPlayAnimation) {
             timeAccumulator = 0.0f;
             gui.currentFrame = (gui.currentFrame + 1) % maxFrame;
-            spherePositions.clear();
-            radius.clear();
-            for (size_t i=0; i<allFrames.size(); i++){
-                std::vector<glm::vec3> const &tmp_pos =allFrames[i][gui.currentFrame].pos; 
-                spherePositions.reserve(spherePositions.size()+tmp_pos.size());
-                spherePositions.insert(spherePositions.end(),tmp_pos.begin(),tmp_pos.end());
-                std::vector<float> const &tmp_radius = allFrames[i][gui.currentFrame].r;
 
-                radius.reserve(radius.size()+tmp_radius.size());
-                radius.insert(radius.end(),tmp_radius.begin(),tmp_radius.end());
+            for (size_t i=0; i<allFrames.size(); i++){
+
+                std::vector<glm::vec3> const &tmp_pos =allFrames[i][gui.currentFrame].pos; 
+                spherePositions.push_back(tmp_pos);
+
+                std::vector<float> const &tmp_radius = allFrames[i][gui.currentFrame].r;
+                radius.push_back(tmp_radius);
             }
         }
 
@@ -345,26 +345,33 @@ int main() {
         glBindVertexArray(pointVAO);
         glBindBuffer(GL_ARRAY_BUFFER, pointVBO);
 
-        std::vector<float> gpuData;
-        gpuData.reserve(spherePositions.size()*4);
+
+        for (size_t i=0; i<allFrames.size(); i++){
 
 
-        for(size_t i=0;i<spherePositions.size();i++)
-        {
-            gpuData.push_back(spherePositions[i].x);
-            gpuData.push_back(spherePositions[i].y);
-            gpuData.push_back(spherePositions[i].z);
-            gpuData.push_back(radius[i]); 
+            std::vector<float> gpuData;
+            gpuData.reserve(spherePositions[i].size()*4);
+
+
+            for(size_t j=0;j<spherePositions[i].size();j++){
+                gpuData.push_back(spherePositions[i][j].x);
+                gpuData.push_back(spherePositions[i][j].y);
+                gpuData.push_back(spherePositions[i][j].z);
+                gpuData.push_back(radius[i][j]); 
+            }
+
+            glBufferSubData(GL_ARRAY_BUFFER,0,
+                    gpuData.size()*sizeof(float),
+                    gpuData.data());
+
+
+            /* === create color for each data === */
+            Color color;
+            color.make_hue(i);
+
+            fastShader.setVec3("objectColor", glm::vec3(color.r,color.g,color.b));
+            glDrawArrays(GL_POINTS,0,spherePositions[i].size());
         }
-
-        glBufferSubData(GL_ARRAY_BUFFER,0,
-                gpuData.size()*sizeof(float),
-                gpuData.data());
-
-
-
-        fastShader.setVec3("objectColor", glm::vec3(1,1,1));
-        glDrawArrays(GL_POINTS,0,spherePositions.size());
 
         /* === display stl === */
         shader.use();
