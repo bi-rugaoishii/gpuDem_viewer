@@ -2,7 +2,7 @@ CXX = g++
 CXXFLAGS =  -Wall -Wextra -O2
 
 # Paths to external dependencies
-INCLUDES = -Iexternal/glad/include -Iexternal/imgui -Iexternal/imgui/backends  -Iexternal/ImGuiFileDialog
+INCLUDES = -Iinclude -Iexternal/imgui -Iexternal/imgui/backends  -Iexternal/ImGuiFileDialog
 LIBS = -lglfw -ldl -lGL 
 
 # All source files
