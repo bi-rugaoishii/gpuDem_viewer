@@ -47,6 +47,7 @@ int main() {
     glEnable(GL_BLEND);  //added
     glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
 
+
     CameraController camController(glm::vec3(0.0f, 0.0f, 5.0f));
     camController.setAspectRatio(static_cast<float>(gWindowWidth)/static_cast<float>(gWindowHeight));
     gCamController = &camController;
@@ -220,7 +221,8 @@ int main() {
                     std::vector<glm::vec3> vertices;
                     std::vector<glm::vec3> normals;
 
-                    const auto& tris = loader.getTriangles();
+                    auto tris = loader.getTriangles();
+
 
                     for(size_t i=0;i<tris.size();i++)
                     {
@@ -375,6 +377,15 @@ int main() {
 
         /* === display stl === */
         shader.use();
+
+        glEnable(GL_CULL_FACE);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+        // back face
+        glDepthMask(GL_FALSE);
+        glCullFace(GL_FRONT);
+
         float opacity = 0.4f;
         for(size_t i=0;i<stlMeshes.size();i++)
         {
@@ -386,6 +397,21 @@ int main() {
 
             stlMeshes[i].draw();
         }
+
+        // front face
+        glCullFace(GL_BACK);
+        for(size_t i=0;i<stlMeshes.size();i++)
+        {
+            glm::mat4 model(1.0f);
+
+            shader.setMat4("model",model);
+            shader.setFloat("opacity",opacity);
+            shader.setVec3("objectColor",glm::vec3(0.7f,0.7f,0.7f));
+
+            stlMeshes[i].draw();
+        }
+        glDisable(GL_CULL_FACE);
+        glDepthMask(GL_TRUE);
 
         gui.render();
         glfwSwapBuffers(window);
