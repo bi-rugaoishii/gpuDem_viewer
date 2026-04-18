@@ -6,6 +6,7 @@
 #include "CameraController.h"
 #include "GuiManager.h"
 #include "PositionLoader.h"
+#include "SphereSmooth.h"
 #include "StlMeshLoader.h"
 #include "Color.h"
 #include "ImGuiFileDialog.h"
@@ -16,7 +17,7 @@
 #include <vector>
 #include <string>
 
-
+GLuint instanceVBO;
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
@@ -43,9 +44,6 @@ int main() {
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) return -1;
     glEnable(GL_DEPTH_TEST);
-    glEnable(GL_PROGRAM_POINT_SIZE);  //added
-    glEnable(GL_BLEND);  //added
-    glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
 
 
     CameraController camController(glm::vec3(0.0f, 0.0f, 5.0f));
@@ -56,9 +54,28 @@ int main() {
     gui.init(window);
 
     Shader shader("vertex_shader.glsl", "fragment_shader.glsl");
-    Shader fastShader("fast_vertex.glsl", "fast_fragment_shader.glsl");
+ //   Shader fastShader("fast_vertex.glsl", "fast_fragment_shader.glsl");
 
-    Sphere sphere(1.0f, 100, 100);
+ // ===== Shader =====
+    Shader meshShader("smooth_vertex_shader.glsl", "smooth_fragment_shader.glsl");
+
+    // ===== Sphere =====
+    SphereSmooth sphere(1.0f, 10, 10);
+
+    // ===== Instance VBO =====
+    glGenBuffers(1, &instanceVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float)*4*1000000, NULL, GL_DYNAMIC_DRAW);
+
+    // Sphere VAO に instance を紐付け
+    sphere.bind();
+    glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
+
+    glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(float)*4, (void*)0);
+    glEnableVertexAttribArray(2);
+    glVertexAttribDivisor(2, 1);
+
+    glBindVertexArray(0);
 
     //* ==== result folder names === */
     std::vector<std::string> resultNames;
@@ -67,33 +84,6 @@ int main() {
     std::vector<Mesh> stlMeshes;
     std::vector<std::string> stlNames;
 
-    //////
-    unsigned int pointVAO, pointVBO;
-    glGenVertexArrays(1, &pointVAO);
-    glGenBuffers(1, &pointVBO);
-
-    glBindVertexArray(pointVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, pointVBO);
-
-    // 最大粒子数ぶん確保（仮に100万想定）
-    glBufferData(GL_ARRAY_BUFFER,
-            sizeof(float)*4*1000000,
-            nullptr,
-            GL_DYNAMIC_DRAW);
-
-    // location 0 = position
-    glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,
-            sizeof(float)*4,(void*)0);
-    glEnableVertexAttribArray(0);
-
-    // location 1 = radius
-    glVertexAttribPointer(1,1,GL_FLOAT,GL_FALSE,
-            sizeof(float)*4,(void*)(sizeof(float)*3));
-    glEnableVertexAttribArray(1);
-
-    glBindVertexArray(0);
-
-    ///
 
     //read coordinates from a file
     PositionLoader loader;
@@ -187,7 +177,6 @@ int main() {
 
             ImGuiFileDialog::Instance()->Close();
         }
-
 
         /* ========= stl loading ============= */
         // =======================================
@@ -324,55 +313,50 @@ int main() {
         if (timeAccumulator >= frameDuration && !allFrames.empty() && gui.isPlayAnimation) {
             timeAccumulator = 0.0f;
             gui.currentFrame = (gui.currentFrame + 1) % maxFrame;
-
-            for (size_t i=0; i<allFrames.size(); i++){
-
-                std::vector<glm::vec3> const &tmp_pos =allFrames[i][gui.currentFrame].pos; 
-                spherePositions.push_back(tmp_pos);
-
-                std::vector<float> const &tmp_radius = allFrames[i][gui.currentFrame].r;
-                radius.push_back(tmp_radius);
-            }
         }
 
-        /* === render spheres === */
+        // =========================
+        //  Sphere Instancing 描画
+        // =========================
+        meshShader.use();
 
-        fastShader.use();
+        meshShader.setMat4("view", view);
+        meshShader.setMat4("projection", proj);
+        meshShader.setVec3("lightPos", camController.camera.Position);
+        meshShader.setVec3("viewPos", camController.camera.Position);
 
+        sphere.bind();
 
-        fastShader.setMat4("view", view);
-        fastShader.setMat4("projection", proj);
-        fastShader.setFloat("viewportHeight",(float)gWindowHeight);
-
-        glBindVertexArray(pointVAO);
-        glBindBuffer(GL_ARRAY_BUFFER, pointVBO);
-
-
-        for (size_t i=0; i<allFrames.size(); i++){
-
-
-            std::vector<float> gpuData;
-            gpuData.reserve(spherePositions[i].size()*4);
-
+        for(size_t i=0;i<spherePositions.size();i++)
+        {
+            std::vector<float> instanceData;
+            instanceData.reserve(spherePositions[i].size()*4);
 
             for(size_t j=0;j<spherePositions[i].size();j++){
-                gpuData.push_back(spherePositions[i][j].x);
-                gpuData.push_back(spherePositions[i][j].y);
-                gpuData.push_back(spherePositions[i][j].z);
-                gpuData.push_back(radius[i][j]); 
+                instanceData.push_back(spherePositions[i][j].x);
+                instanceData.push_back(spherePositions[i][j].y);
+                instanceData.push_back(spherePositions[i][j].z);
+                instanceData.push_back(radius[i][j]);
             }
 
-            glBufferSubData(GL_ARRAY_BUFFER,0,
-                    gpuData.size()*sizeof(float),
-                    gpuData.data());
+            glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
+            glBufferSubData(GL_ARRAY_BUFFER, 0,
+                    instanceData.size()*sizeof(float),
+                    &instanceData[0]);
 
-
-            /* === create color for each data === */
+            // 色
             Color color;
             color.make_hue(i);
+            meshShader.setVec3("objectColor",
+                    glm::vec3(color.r, color.g, color.b));
 
-            fastShader.setVec3("objectColor", glm::vec3(color.r,color.g,color.b));
-            glDrawArrays(GL_POINTS,0,spherePositions[i].size());
+            glDrawElementsInstanced(
+                    GL_TRIANGLES,
+                    sphere.getIndexCount(),
+                    GL_UNSIGNED_INT,
+                    0,
+                    spherePositions[i].size()
+                    );
         }
 
         /* === display stl === */
