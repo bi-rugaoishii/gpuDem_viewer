@@ -9,6 +9,7 @@
 #include "StlMeshLoader.h"
 #include "Color.h"
 #include "ImGuiFileDialog.h"
+#include "picojson.h"
 #include "Mesh.h"
 //#include "FileDialog.h"
 #include <glm/glm.hpp>
@@ -105,10 +106,67 @@ int main() {
     allFrames.push_back(loader.loadAllFrames("results"));
 
     float timeAccumulator = 0.0f;
-    float frameDuration = 0.05f; // 各フレームの持続時間（秒）
+    float frameDuration = 1.0f/20.0f; // 各フレームの持続時間（秒）
 
     std::vector<std::vector<glm::vec3>> spherePositions;
     std::vector<std::vector<float>> radius;
+
+    //read demSettings.json
+    std::ifstream demSettings("demSettings.json");
+    if (!demSettings){
+        std::printf("demSettings.json not found!!!!\n");
+    }else{
+        picojson::value jsonValue;
+
+        std::string err = picojson::parse(jsonValue,demSettings);
+
+        if (!err.empty()){
+            printf("parse error: %s\n",err.c_str());
+        }
+
+        if (!jsonValue.is<picojson::object>()){
+            printf("root is not object\n");
+        }
+
+
+        printf("Reading initial files\n");
+        picojson::object obj = jsonValue.get<picojson::object>();
+        picojson::object walls = obj["walls"].get<picojson::object>();
+        picojson::array files=walls["filepaths"].get<picojson::array>();
+        printf("Reading initial files\n");
+        for (size_t i=0; i<files.size(); i++){
+
+            std::string filePath =files[i].get<std::string>();
+
+            StlMeshLoader loader;
+
+            if(loader.loadASCII(filePath)){
+                std::vector<glm::vec3> vertices;
+                std::vector<glm::vec3> normals;
+
+                auto tris = loader.getTriangles();
+
+
+                for(size_t i=0;i<tris.size();i++)
+                {
+                    vertices.push_back(tris[i].v0);
+                    vertices.push_back(tris[i].v1);
+                    vertices.push_back(tris[i].v2);
+
+                    normals.push_back(tris[i].normal);
+                    normals.push_back(tris[i].normal);
+                    normals.push_back(tris[i].normal);
+                }
+
+                Mesh mesh;
+                mesh.build(vertices,normals);
+
+                stlMeshes.push_back(mesh);
+                stlNames.push_back(filePath);
+            }
+        }
+    }
+
 
 
 
