@@ -55,8 +55,9 @@ int main() {
     GuiManager gui;
     gui.init(window);
 
-    Shader shader("vertex_shader.glsl", "fragment_shader.glsl");
-    Shader fastShader("fast_vertex.glsl", "fast_fragment_shader.glsl");
+    std::string pathShader="/home/dakahoshi/myProgram/gpuDem_viewer/";
+    Shader shader(pathShader+"vertex_shader.glsl", pathShader+"fragment_shader.glsl");
+    Shader fastShader(pathShader+"fast_vertex.glsl",pathShader+"fast_fragment_shader.glsl");
 
     Sphere sphere(1.0f, 100, 100);
 
@@ -126,7 +127,7 @@ int main() {
         spherePositions.clear() ;
         radius.clear() ;
 
-        int maxFrame = std::numeric_limits<size_t>::max();
+        size_t maxFrame = std::numeric_limits<size_t>::max();
         for(size_t i=0; i<allFrames.size(); i++){
             if(allFrames[i].size()<maxFrame){
                 maxFrame=allFrames[i].size();

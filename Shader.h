@@ -7,7 +7,7 @@ class Shader {
 public:
     GLuint ID;
 
-    Shader(const char* vertexPath, const char* fragmentPath);
+    Shader(const std::string &vertexPath, const std::string &fragmentPath);
     void use() const;
     void setBool(const std::string &name, bool value) const;
     void setInt(const std::string &name, int value) const;
@@ -16,6 +16,6 @@ public:
     void setVec3(const std::string &name, const glm::vec3 &vec) const;
 
 private:
-    std::string readFile(const char* filePath);
+    std::string readFile(const std::string &filePath);
     void checkCompileErrors(GLuint shader, const std::string& type);
 };

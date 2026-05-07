@@ -3,7 +3,7 @@
 #include <sstream>
 #include <iostream>
 
-Shader::Shader(const char* vertexPath, const char* fragmentPath) {
+Shader::Shader(const std::string &vertexPath, const std::string &fragmentPath) {
     std::string vCode = readFile(vertexPath);
     std::string fCode = readFile(fragmentPath);
     const char* vShaderCode = vCode.c_str();
@@ -49,7 +49,7 @@ void Shader::setVec3(const std::string &name, const glm::vec3 &vec) const {
     glUniform3fv(glGetUniformLocation(ID, name.c_str()), 1, &vec[0]);
 }
 
-std::string Shader::readFile(const char* filePath) {
+std::string Shader::readFile(const std::string &filePath) {
     std::ifstream file(filePath);
     std::stringstream buffer;
     if (file) {
