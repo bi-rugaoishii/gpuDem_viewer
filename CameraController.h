@@ -5,6 +5,7 @@
 
 class CameraController {
 public:
+    glm::vec3 target;
     Camera camera;
     CameraController(glm::vec3 startPos);
     void updateTime(float currentTime);
@@ -13,7 +14,6 @@ public:
     void mouseCallback(float xpos, float ypos);
     void scroll_callback(float yoffset);
     void mouseButtonCallback(int button, int action);
-    glm::vec3 target;
     glm::mat4 getProjectionMatrix() const;
     glm::vec3 safeNormalize(const glm::vec3& v);
 

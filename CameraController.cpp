@@ -2,11 +2,12 @@
 // CameraController.cpp
 #define GLM_ENABLE_EXPERIMENTAL
 #include "CameraController.h"
+#include <cstdio>
 #include <glm/gtx/rotate_vector.hpp>
 #include <glm/gtc/quaternion.hpp>
 
 CameraController::CameraController(glm::vec3 startPos)
-    : camera(startPos), lastX(400.0f), lastY(300.0f), firstMouse(true), rotatingCamera(false), deltaTime(0.0f), lastFrame(0.0f) {}
+    : camera(startPos), lastX(400.0f), lastY(300.0f), firstMouse(true), rotatingCamera(false), deltaTime(0.0f), lastFrame(0.0f), target(0.0f,0.0f,0.0f) {}
 
 void CameraController::updateTime(float currentTime) {
     deltaTime = currentTime - lastFrame;
@@ -57,7 +58,6 @@ void CameraController::mouseCallback(float xpos, float ypos)
     float yawAngle   = -dx * speed;
     float pitchAngle = -dy * speed;
 
-    //glm::vec3 pivot = target;
     float distance = glm::length(target - camera.Position);
     glm::vec3 pivot = camera.Position + camera.Front * distance;
     target = pivot;
@@ -76,6 +76,7 @@ void CameraController::mouseCallback(float xpos, float ypos)
     camera.Front = safeNormalize(pivot - camera.Position);
 
     camera.Right = safeNormalize(glm::cross(camera.Front, camera.Up));
+
     camera.Up    = safeNormalize(glm::cross(camera.Right, camera.Front));
 }
 

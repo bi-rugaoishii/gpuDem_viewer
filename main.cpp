@@ -48,8 +48,9 @@ int main() {
     glEnable(GL_BLEND);  //added
     glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
 
+    glm::vec3 startPos(0.0f,0.0f,5.0f);
 
-    CameraController camController(glm::vec3(0.0f, 0.0f, 5.0f));
+    CameraController camController(startPos);
     camController.setAspectRatio(static_cast<float>(gWindowWidth)/static_cast<float>(gWindowHeight));
     gCamController = &camController;
 
@@ -129,11 +130,11 @@ int main() {
         }
 
 
-        printf("Reading initial files\n");
+        /* == read initial files == */
         picojson::object obj = jsonValue.get<picojson::object>();
         picojson::object walls = obj["walls"].get<picojson::object>();
         picojson::array files=walls["filepaths"].get<picojson::array>();
-        printf("Reading initial files\n");
+
         for (size_t i=0; i<files.size(); i++){
 
             std::string filePath =files[i].get<std::string>();
