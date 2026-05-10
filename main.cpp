@@ -2,6 +2,7 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include "Shader.h"
+#include "PlaneRenderer.h"
 #include "Sphere.h"
 #include "CameraController.h"
 #include "GuiManager.h"
@@ -169,6 +170,8 @@ int main() {
     }
 
 
+    /* == make plane Renderer == */
+    PlaneRenderer plane;
 
 
     /* ======= main render loop =========== */
@@ -197,6 +200,7 @@ int main() {
 
         /* ============= GUI buttons ============== */
         gui.drawSphereControl(camController.camera.Position,maxFrame);
+        gui.planeRenderControl(plane);
         gui.drawStlControl(stlNames);
         gui.drawResultControl(resultNames);
 
@@ -357,7 +361,7 @@ int main() {
 
 
         glm::mat4 view = camController.camera.GetViewMatrix();
-        glm::mat4 proj = camController.getProjectionMatrix(); //set perspective
+        glm::mat4 proj = camController.getProjectionMatrix(gui); //set perspective
         shader.setMat4("view", view);
         shader.setMat4("projection", proj);
         shader.setVec3("lightPos", glm::vec3(3.0f, 3.0f, 3.0f));
@@ -398,8 +402,7 @@ int main() {
         /* === render spheres === */
 
         fastShader.use();
-
-
+        fastShader.setBool("isOrthographic", gui.isOrthographic);
         fastShader.setMat4("view", view);
         fastShader.setMat4("projection", proj);
         fastShader.setFloat("viewportHeight",(float)gWindowHeight);
@@ -472,6 +475,10 @@ int main() {
         }
         glDisable(GL_CULL_FACE);
         glDepthMask(GL_TRUE);
+
+
+        /* == display plane ==*/
+        plane.render(shader);
 
         gui.render();
         glfwSwapBuffers(window);

@@ -2,6 +2,7 @@
 // CameraController.cpp
 #define GLM_ENABLE_EXPERIMENTAL
 #include "CameraController.h"
+#include "GuiManager.h"
 #include <cstdio>
 #include <glm/gtx/rotate_vector.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -26,6 +27,51 @@ void CameraController::processKeyboard(GLFWwindow* window) {
     }
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS){
         camera.ProcessKeyboard(RIGHT, deltaTime);
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS){
+        float distance = glm::length(target - camera.Position);
+
+        if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS){
+            camera.Front = glm::vec3(0.0f, 0.0f, 1.0f);
+            camera.Up = glm::vec3(0.0f, 1.0f, 0.0f);
+        }else{
+            camera.Front = glm::vec3(0.0f, 0.0f, -1.0f);
+            camera.Up = glm::vec3(0.0f, 1.0f, 0.0f);
+        }
+        camera.Right = glm::normalize(glm::cross(camera.Front, camera.Up));
+        camera.Position = target - camera.Front * distance;
+    }
+
+
+    if (glfwGetKey(window, GLFW_KEY_Y) == GLFW_PRESS){
+        float distance = glm::length(target - camera.Position);
+        if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS){
+            camera.Front = glm::vec3(0.0f, 1.0f, 0.0f);
+            camera.Up = glm::vec3(0.0f, 0.0f, 1.0f);
+        }else{
+            camera.Front = glm::vec3(0.0f, -1.0f, 0.0f);
+            camera.Up = glm::vec3(0.0f, 0.0f, 1.0f);
+        }
+
+        camera.Right = glm::normalize(glm::cross(camera.Front, camera.Up));
+        camera.Position = target - camera.Front * distance;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS){
+        float distance = glm::length(target - camera.Position);
+
+        if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS){
+            camera.Front = glm::vec3(1.0f, 0.0f, 0.0f);
+            camera.Up = glm::vec3(0.0f, 1.0f, 0.0f);
+        }else{
+            camera.Front = glm::vec3(-1.0f, 0.0f, 0.0f);
+            camera.Up = glm::vec3(0.0f, 1.0f, 0.0f);
+
+        }
+
+        camera.Right = glm::normalize(glm::cross(camera.Front, camera.Up));
+        camera.Position = target - camera.Front * distance;
     }
 }
 
@@ -100,6 +146,24 @@ void CameraController::scroll_callback(float yoffset){
     camera.ProcessMouseScroll(yoffset);
 }
 
-glm::mat4 CameraController::getProjectionMatrix() const{
-    return glm::perspective(glm::radians(camera.Zoom), aspectRatio, 0.1f, 100.0f);
+glm::mat4 CameraController::getProjectionMatrix(const GuiManager &gui) const{
+    glm::mat4 projection;
+
+    if (gui.isOrthographic){
+        float scale = camera.Zoom*0.05;
+
+        projection= glm::ortho(
+                -scale * aspectRatio,
+                scale * aspectRatio,
+                -scale,
+                scale,
+                -100.0f,
+                100.0f
+                );
+
+    }else{
+        projection =glm::perspective(glm::radians(camera.Zoom), aspectRatio, 0.1f, 100.0f);
+    }
+
+    return projection;
 }

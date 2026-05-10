@@ -16,6 +16,8 @@ CPP_SRC = main.cpp \
 		  StlMeshLoader.cpp\
 		  Color.cpp\
 		  Mesh.cpp\
+		  PlaneRenderer.cpp\
+		  CubeMesh.cpp\
 		  external/ImGuiFileDialog/ImGuiFileDialog.cpp \
 		  external/imgui/imgui.cpp \
 		  external/imgui/imgui_draw.cpp \

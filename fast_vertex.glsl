@@ -6,6 +6,7 @@ layout(location = 1) in float aRadius;
 uniform mat4 view;
 uniform mat4 projection;
 uniform float viewportHeight;
+uniform bool isOrthographic;
 
 void main()
 {
@@ -16,6 +17,10 @@ void main()
 
     float projScale = projection[1][1];
 
-    gl_PointSize =
-        aRadius * projScale * viewportHeight / viewZ;
+    if (isOrthographic){
+        gl_PointSize = aRadius * viewportHeight * projScale;
+    }else{
+        gl_PointSize =  aRadius * projScale * viewportHeight / viewZ;
+    }
 }
+

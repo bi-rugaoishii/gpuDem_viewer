@@ -2,6 +2,7 @@
 #include "GuiManager.h"
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_opengl3.h"
+#include <glm/gtc/type_ptr.hpp>
 
 void GuiManager::init(GLFWwindow* window) {
     IMGUI_CHECKVERSION();
@@ -58,6 +59,21 @@ void GuiManager::drawResultControl(const std::vector<std::string>& names)
     ImGui::End();
 }
 
+
+void GuiManager::planeRenderControl(PlaneRenderer &plane){
+    ImGui::Begin("Plane Render Mode");
+
+    ImGui::Checkbox("Show Plane", &plane.visible);
+
+    ImGui::DragFloat3("Plane Position", glm::value_ptr(plane.position), 0.1f);
+
+    ImGui::DragFloat3("Plane Normal", glm::value_ptr(plane.normal), 0.01f);
+
+    ImGui::DragFloat("Plane Size", &plane.size, 0.1f, 0.1f, 1000.0f);
+    ImGui::DragFloat("Plane thickness", &plane.thickness, 0.1f, 0.0f, 1.0f);
+
+    ImGui::End();
+}
 
 void GuiManager::renderModeControl(){
     ImGui::Begin("Render Mode");
@@ -171,11 +187,15 @@ void GuiManager::drawSphereControl(const glm::vec3& cameraPos, const int maxFram
 
     ImGui::Text("Frame %d / %d", currentFrame, maxFrame);
 
-    /* === reload button */
+    /* === reload button == */
 
     if (ImGui::Button("Reload Frames")){
         requestReload = true;
     }
+
+    /* === is orthographic == */
+
+    ImGui::Checkbox("Orthographic",&this->isOrthographic);
 
     ImGui::End();
 }

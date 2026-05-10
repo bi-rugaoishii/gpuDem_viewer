@@ -13,9 +13,9 @@ glm::mat4 Camera::GetViewMatrix() const {
     return glm::lookAt(Position, Position + Front, Up);
 }
 
-void Camera::ProcessMouseScroll(float yoffset){
+void Camera::ProcessMouseScroll(float depthOffset){
     float direction = 
-    Zoom -= yoffset;
+    Zoom -= depthOffset;
     /*
     if (Zoom <1.0f){
         Zoom = 1.0f;
@@ -26,16 +26,17 @@ void Camera::ProcessMouseScroll(float yoffset){
     */
     //updateCameraVectors();
 }
-void Camera::ProcessKeyboard(Camera_Movement direction, float deltaTime) {
+void Camera::ProcessKeyboard(Camera_Movement input, float deltaTime) {
     float velocity = MovementSpeed * deltaTime;
-    if (direction == UP)
+    if (input == UP)
         Position += Up * velocity;
-    if (direction == DOWN)
+    if (input == DOWN)
         Position -= Up * velocity;
-    if (direction == LEFT)
+    if (input == LEFT)
         Position -= Right * velocity;
-    if (direction == RIGHT)
+    if (input == RIGHT)
         Position += Right * velocity;
+
 }
 
 void Camera::ProcessMouseMovement(float xoffset, float yoffset) {

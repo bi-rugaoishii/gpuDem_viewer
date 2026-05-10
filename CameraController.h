@@ -1,6 +1,7 @@
 // CameraController.h
 #pragma once
 #include "Camera.h"
+#include "GuiManager.h"
 #include <GLFW/glfw3.h>
 
 class CameraController {
@@ -14,7 +15,7 @@ public:
     void mouseCallback(float xpos, float ypos);
     void scroll_callback(float yoffset);
     void mouseButtonCallback(int button, int action);
-    glm::mat4 getProjectionMatrix() const;
+    glm::mat4 getProjectionMatrix(const GuiManager &gui) const;
     glm::vec3 safeNormalize(const glm::vec3& v);
 
     float lastX;

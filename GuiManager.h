@@ -1,16 +1,17 @@
 // GuiManager.h
 #pragma once
 #include "imgui.h"
-#include <glm/glm.hpp>
-#include <GLFW/glfw3.h>
 #include <vector>
 #include <string>
+#include "PlaneRenderer.h"
+#include <GLFW/glfw3.h>
 
 class GuiManager {
 public:
     void init(GLFWwindow* window);
     void beginFrame();
     void renderModeControl();
+    void planeRenderControl(PlaneRenderer &plane);
     void drawSphereControl(const glm::vec3& cameraPos,const int maxFrame);
     void render();
     void shutdown();
@@ -30,6 +31,8 @@ public:
 
     bool openStlDialog = false;
     bool openResultDialog = false;
+    bool isOrthographic = false;
+
     int requestStlDelete = -1;
 
     void drawStlControl(const std::vector<std::string>& names);
