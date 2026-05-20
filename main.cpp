@@ -58,7 +58,7 @@ int main() {
     GuiManager gui;
     gui.init(window);
 
-    std::string pathShader="/home/dakahoshi/myProgram/gpuDem_viewer/";
+    std::string pathShader=VIEWER_SHADER_PATH;
     Shader shader(pathShader+"vertex_shader.glsl", pathShader+"fragment_shader.glsl");
     Shader fastShader(pathShader+"fast_vertex.glsl",pathShader+"fast_fragment_shader.glsl");
 

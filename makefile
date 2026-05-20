@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS =  -Wall -Wextra -O2
+CXXFLAGS =  -Wall -Wextra -O2 -DVIEWER_SHADER_PATH=\"$(CURDIR)\/\"
 
 # Paths to external dependencies
 INCLUDES = -Iinclude -Iexternal/imgui -Iexternal/imgui/backends  -Iexternal/ImGuiFileDialog
