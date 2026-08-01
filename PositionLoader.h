@@ -1,16 +1,19 @@
 #pragma once
-#include <glm/glm.hpp>
-#include <vector>
-#include <string>
 
-struct FrameData
-{
+#include <glm/glm.hpp>
+#include <string>
+#include <vector>
+
+struct FrameData{
     std::vector<glm::vec3> pos;
     std::vector<float> r;
+    bool isValid = false;
 };
 
-class PositionLoader {
+class PositionLoader{
 public:
     FrameData load(const std::string& filename);
-    std::vector<FrameData> loadAllFrames(const std::string& folder);
+
+    // データ本体ではなく、ファイル名一覧だけ返す
+    std::vector<std::string> listFrameFiles(const std::string& folder);
 };

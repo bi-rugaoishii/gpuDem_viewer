@@ -17,6 +17,9 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <vector>
 #include <string>
+#include <fstream>
+#include <limits>
+#include <utility>
 
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
@@ -27,6 +30,9 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 CameraController* gCamController = nullptr;
 int gWindowWidth = 800;
 int gWindowHeight = 600;
+
+int getMaxFrame(const std::vector<std::vector<std::string>>& allFrameFiles);
+void loadCurrentFrames(PositionLoader& loader, const std::vector<std::vector<std::string>>& allFrameFiles, int frameIndex, std::vector<FrameData>& currentFrames, std::vector<int>& loadedFrameIndices);
 
 int main() {
     glfwInit();
@@ -102,16 +108,20 @@ int main() {
     //read coordinates from a file
     PositionLoader loader;
 
-    
-    std::vector<std::vector<FrameData>> allFrames;
-    resultNames.push_back("results"); // default name
-    allFrames.push_back(loader.loadAllFrames("results"));
+
+    const int invalidFrameIndex = -1;
+    std::vector<std::vector<std::string>> allFrameFiles;
+    std::vector<FrameData> currentFrames;
+    std::vector<int> loadedFrameIndices;
+
+    resultNames.push_back("results");
+    allFrameFiles.push_back(loader.listFrameFiles("results"));
+    currentFrames.resize(allFrameFiles.size());
+    loadedFrameIndices.resize(allFrameFiles.size(), invalidFrameIndex);
 
     float timeAccumulator = 0.0f;
     float frameDuration = 1.0f/20.0f; // 各フレームの持続時間（秒）
 
-    std::vector<std::vector<glm::vec3>> spherePositions;
-    std::vector<std::vector<float>> radius;
 
     //read demSettings.json
     std::ifstream demSettings("demSettings.json");
@@ -185,18 +195,9 @@ int main() {
 
         gui.beginFrame();
 
-        /* == reset spherePositions and radius == */
-        spherePositions.clear() ;
-        radius.clear() ;
 
-        size_t maxFrame = std::numeric_limits<size_t>::max();
-        for(size_t i=0; i<allFrames.size(); i++){
-            if(allFrames[i].size()<maxFrame){
-                maxFrame=allFrames[i].size();
-            }
-        }
+        int maxFrame = getMaxFrame(allFrameFiles);
 
-        maxFrame = maxFrame-1;
 
         /* ============= GUI buttons ============== */
         gui.drawSphereControl(camController.camera.Position,maxFrame);
@@ -223,35 +224,25 @@ int main() {
         }
 
         if(ImGuiFileDialog::Instance()->Display("ChooseResult")){
+            if(ImGuiFileDialog::Instance()->IsOk()){
+                const std::string folderPath = ImGuiFileDialog::Instance()->GetCurrentPath();
+                std::vector<std::string> frameFiles = loader.listFrameFiles(folderPath);
 
-            if(ImGuiFileDialog::Instance()->IsOk())
-            {
-                std::string folderPath =
-                    ImGuiFileDialog::Instance()->GetCurrentPath();
-                allFrames.push_back(loader.loadAllFrames(folderPath));
-                resultNames.push_back(folderPath);
+                if(!frameFiles.empty()){
+                    resultNames.push_back(folderPath);
+                    allFrameFiles.push_back(std::move(frameFiles));
+                    currentFrames.push_back(FrameData());
+                    loadedFrameIndices.push_back(invalidFrameIndex);
 
-                /* == refresh max frame to the smallest of loaded results == */
-                printf("checking minimum of maximum frames\n");
-                maxFrame = std::numeric_limits<size_t>::max();
-                for(size_t i=0; i<allFrames.size(); i++){
-                    if(allFrames[i].size()<maxFrame){
-                        maxFrame=allFrames[i].size();
+                    maxFrame = getMaxFrame(allFrameFiles);
+                    if(gui.currentFrame > maxFrame){
+                        gui.currentFrame = maxFrame;
                     }
-                }
-                maxFrame = maxFrame-1;
-
-                printf("checking done\n");
-
-                gui.drawSphereControl(camController.camera.Position,maxFrame);
-                if(maxFrame<gui.currentFrame){
-                    gui.currentFrame=maxFrame;
                 }
             }
 
             ImGuiFileDialog::Instance()->Close();
         }
-
 
         /* ========= stl loading ============= */
         // =======================================
@@ -324,37 +315,21 @@ int main() {
         // ======================================
         // Reload request handling
         // ======================================
-        if(gui.requestReload)
-        {
+
+        if(gui.requestReload){
             gui.requestReload = false;
 
-            allFrames.clear();
-            for (size_t i=0; i<resultNames.size(); i++){
-                allFrames.push_back(loader.loadAllFrames(resultNames[i]));
+            for(std::size_t i = 0; i < resultNames.size(); i++){
+                allFrameFiles[i] = loader.listFrameFiles(resultNames[i]);
+                currentFrames[i] = FrameData();
+                loadedFrameIndices[i] = invalidFrameIndex;
             }
 
-            if(!allFrames.empty())
-            {
-                /* == refresh max frame to the smallest of loaded results == */
-                maxFrame = 1e16;
-                for(size_t i=0; i<allFrames.size(); i++){
-                    if(allFrames[i].size()<maxFrame){
-                        maxFrame=allFrames[i].size();
-                    }
-                }
-
-                if(maxFrame<gui.currentFrame){
-                    gui.currentFrame=maxFrame;
-
-                }
-                maxFrame = maxFrame - 1;
-
-                spherePositions.clear() ;
-                radius.clear() ;
+            maxFrame = getMaxFrame(allFrameFiles);
+            if(gui.currentFrame > maxFrame){
+                gui.currentFrame = maxFrame;
             }
-
         }
-
         shader.use();
 
         camController.setAspectRatio(static_cast<float>(gWindowWidth)/static_cast<float>(gWindowHeight)); //for window size change
@@ -368,36 +343,27 @@ int main() {
         shader.setVec3("viewPos", camController.camera.Position);
 
         //refresh animated frame
+
         gui.deltaTime = gui.currentFrameTime - gui.lastFrameTime;
         gui.lastFrameTime = gui.currentFrameTime;
-        timeAccumulator += gui.deltaTime;
 
-        //show in currentFrame
-
-        spherePositions.reserve(allFrames.size());
-        radius.reserve(allFrames.size());
-        for (size_t i=0; i<allFrames.size(); i++){
-
-            std::vector<glm::vec3> const &tmp_pos =allFrames[i][gui.currentFrame].pos; 
-            spherePositions.push_back(tmp_pos);
-
-            std::vector<float> const &tmp_radius = allFrames[i][gui.currentFrame].r;
-            radius.push_back(tmp_radius);
-        }
-
-        if (timeAccumulator >= frameDuration && !allFrames.empty() && gui.isPlayAnimation) {
+        if(gui.isFrameSliderActive){
             timeAccumulator = 0.0f;
-            gui.currentFrame = (gui.currentFrame + 1) % maxFrame;
+        }else{
+            timeAccumulator += gui.deltaTime;
 
-            for (size_t i=0; i<allFrames.size(); i++){
+            if(timeAccumulator >= frameDuration && !allFrameFiles.empty() && gui.isPlayAnimation){
+                timeAccumulator = 0.0f;
 
-                std::vector<glm::vec3> const &tmp_pos =allFrames[i][gui.currentFrame].pos; 
-                spherePositions.push_back(tmp_pos);
-
-                std::vector<float> const &tmp_radius = allFrames[i][gui.currentFrame].r;
-                radius.push_back(tmp_radius);
+                if(maxFrame > 0){
+                    gui.currentFrame = (gui.currentFrame + 1) % (maxFrame + 1);
+                }else{
+                    gui.currentFrame = 0;
+                }
             }
         }
+        
+        loadCurrentFrames(loader, allFrameFiles, gui.currentFrame, currentFrames, loadedFrameIndices);
 
         /* === render spheres === */
 
@@ -411,31 +377,34 @@ int main() {
         glBindBuffer(GL_ARRAY_BUFFER, pointVBO);
 
 
-        for (size_t i=0; i<allFrames.size(); i++){
+        for(std::size_t i = 0; i < currentFrames.size(); i++){
+            const FrameData& frame = currentFrames[i];
 
-
-            std::vector<float> gpuData;
-            gpuData.reserve(spherePositions[i].size()*4);
-
-
-            for(size_t j=0;j<spherePositions[i].size();j++){
-                gpuData.push_back(spherePositions[i][j].x);
-                gpuData.push_back(spherePositions[i][j].y);
-                gpuData.push_back(spherePositions[i][j].z);
-                gpuData.push_back(radius[i][j]); 
+            if(!frame.isValid || frame.pos.size() != frame.r.size()){
+                continue;
             }
 
-            glBufferSubData(GL_ARRAY_BUFFER,0,
-                    gpuData.size()*sizeof(float),
-                    gpuData.data());
+            std::vector<float> gpuData(frame.pos.size() * 4);
 
+            for(std::size_t j = 0; j < frame.pos.size(); j++){
+                gpuData[j * 4 + 0] = frame.pos[j].x;
+                gpuData[j * 4 + 1] = frame.pos[j].y;
+                gpuData[j * 4 + 2] = frame.pos[j].z;
+                gpuData[j * 4 + 3] = frame.r[j];
+            }
 
-            /* === create color for each data === */
+            glBufferSubData(
+                    GL_ARRAY_BUFFER,
+                    0,
+                    gpuData.size() * sizeof(float),
+                    gpuData.data()
+                    );
+
             Color color;
             color.make_hue(i);
 
-            fastShader.setVec3("objectColor", glm::vec3(color.r,color.g,color.b));
-            glDrawArrays(GL_POINTS,0,spherePositions[i].size());
+            fastShader.setVec3("objectColor", glm::vec3(color.r, color.g, color.b));
+            glDrawArrays(GL_POINTS, 0, static_cast<GLsizei>(frame.pos.size()));
         }
 
         /* === display stl === */
@@ -510,4 +479,61 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset){
     if (!ImGui::GetIO().WantCaptureMouse && gCamController != nullptr)
         gCamController->scroll_callback(static_cast<float>(yoffset));
 
+}
+
+int getMaxFrame(const std::vector<std::vector<std::string>>& allFrameFiles){
+    if(allFrameFiles.empty()){
+        return 0;
+    }
+
+    std::size_t minimumFrameCount = std::numeric_limits<std::size_t>::max();
+
+    for(std::size_t i = 0; i < allFrameFiles.size(); i++){
+        if(allFrameFiles[i].empty()){
+            return 0;
+        }
+
+        if(allFrameFiles[i].size() < minimumFrameCount){
+            minimumFrameCount = allFrameFiles[i].size();
+        }
+    }
+
+    if(minimumFrameCount == 0 || minimumFrameCount == std::numeric_limits<std::size_t>::max()){
+        return 0;
+    }
+
+    return static_cast<int>(minimumFrameCount - 1);
+}
+
+void loadCurrentFrames(PositionLoader& loader, const std::vector<std::vector<std::string>>& allFrameFiles, int frameIndex, std::vector<FrameData>& currentFrames, std::vector<int>& loadedFrameIndices){
+    if(frameIndex < 0){
+        return;
+    }
+
+    const std::size_t resultCount = allFrameFiles.size();
+
+    if(currentFrames.size() != resultCount){
+        currentFrames.resize(resultCount);
+    }
+
+    if(loadedFrameIndices.size() != resultCount){
+        loadedFrameIndices.resize(resultCount, -1);
+    }
+
+    for(std::size_t i = 0; i < resultCount; i++){
+        const std::size_t requestedFrame = static_cast<std::size_t>(frameIndex);
+
+        if(requestedFrame >= allFrameFiles[i].size()){
+            currentFrames[i] = FrameData();
+            loadedFrameIndices[i] = frameIndex;
+            continue;
+        }
+
+        if(loadedFrameIndices[i] == frameIndex){
+            continue;
+        }
+
+        currentFrames[i] = loader.load(allFrameFiles[i][requestedFrame]);
+        loadedFrameIndices[i] = frameIndex;
+    }
 }

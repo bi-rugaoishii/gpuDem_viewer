@@ -18,6 +18,7 @@ public:
 
     //For animation
     bool isPlayAnimation=false;
+    bool isFrameSliderActive = false;
     float lastFrameTime=0;
     float deltaTime=0;
     int currentFrame =0;

@@ -92,7 +92,6 @@ void GuiManager::renderModeControl(){
 void GuiManager::drawSphereControl(const glm::vec3& cameraPos, const int maxFrame) {
     ImGui::Begin("Animation Control");
 
-    //ImGui::Checkbox("Play", &isPlayAnimation);
 
     //scale bars
     /*
@@ -103,6 +102,7 @@ void GuiManager::drawSphereControl(const glm::vec3& cameraPos, const int maxFram
 
     //frameBars
     ImGui::SliderInt("Frame",&currentFrame, 0, maxFrame);
+    isFrameSliderActive = ImGui::IsItemActive();
 
     // ======================================
     // Frame step buttons
