@@ -65,8 +65,8 @@ int main() {
     gui.init(window);
 
     std::string pathShader=VIEWER_SHADER_PATH;
-    Shader shader(pathShader+"vertex_shader.glsl", pathShader+"fragment_shader.glsl");
-    Shader fastShader(pathShader+"fast_vertex.glsl",pathShader+"fast_fragment_shader.glsl");
+    Shader shader(pathShader+"/vertex_shader.glsl", pathShader+"/fragment_shader.glsl");
+    Shader fastShader(pathShader+"/fast_vertex.glsl",pathShader+"/fast_fragment_shader.glsl");
 
     Sphere sphere(1.0f, 100, 100);
 

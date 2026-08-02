@@ -162,7 +162,7 @@ glm::mat4 CameraController::getProjectionMatrix(const GuiManager &gui) const{
                 );
 
     }else{
-        projection =glm::perspective(glm::radians(camera.Zoom), aspectRatio, 0.1f, 100.0f);
+        projection =glm::perspective(glm::radians(camera.Zoom), aspectRatio, 0.001f, 100.0f);
     }
 
     return projection;

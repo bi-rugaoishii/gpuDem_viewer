@@ -1,5 +1,7 @@
 // Camera.cpp
 #include "Camera.h"
+#include <cmath>
+#include <algorithm>
 #include <glm/gtc/constants.hpp>
 
 Camera::Camera(glm::vec3 position)
@@ -14,8 +16,8 @@ glm::mat4 Camera::GetViewMatrix() const {
 }
 
 void Camera::ProcessMouseScroll(float depthOffset){
-    float direction = 
-    Zoom -= depthOffset;
+    Zoom *= std::pow(0.85f,depthOffset);
+    Zoom = std::clamp(Zoom,0.05f,120.0f);;
     /*
     if (Zoom <1.0f){
         Zoom = 1.0f;
